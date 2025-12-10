@@ -38,7 +38,7 @@ def decrypt_seed_endpoint(payload: EncryptedSeed):
 
         os.chmod(SEED_FILE, 0o644)  # ensure readable
 
-        return {"status": "ok"}
+        return {"status": "success"}
 
     except Exception:
         raise HTTPException(
