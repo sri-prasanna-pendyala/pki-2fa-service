@@ -7,26 +7,19 @@ from .totp_utils import generate_totp_code, generate_code_with_validity, verify_
 
 app = FastAPI()
 
-# ----------------------------
-# Models
-# ----------------------------
-
 class EncryptedSeed(BaseModel):
     encrypted_seed: str
 
 class VerifyCode(BaseModel):
     code: str | None = None
 
-
 # ----------------------------
-# File paths (simulate Docker paths)
+# IMPORTANT: Correct Docker path
 # ----------------------------
-DATA_DIR = "data"          # local folder (will become /data inside Docker)
+DATA_DIR = "/data"
 SEED_FILE = os.path.join(DATA_DIR, "seed.txt")
 
-os.makedirs(DATA_DIR, exist_ok=True)   # ensure folder exists
-
-
+os.makedirs(DATA_DIR, exist_ok=True)
 
 # ===============================================================
 # 1️⃣ POST /decrypt-seed
@@ -40,19 +33,18 @@ def decrypt_seed_endpoint(payload: EncryptedSeed):
         private_key = load_private_key()
         seed_hex = decrypt_seed(encrypted_seed_b64, private_key)
 
-        # Save hex seed to /data/seed.txt
         with open(SEED_FILE, "w") as f:
             f.write(seed_hex)
 
+        os.chmod(SEED_FILE, 0o644)  # ensure readable
+
         return {"status": "ok"}
 
-    except Exception as e:
-        # Do NOT leak internal errors
+    except Exception:
         raise HTTPException(
             status_code=500,
             detail={"error": "Decryption failed"}
         )
-
 
 # ===============================================================
 # 2️⃣ GET /generate-2fa
@@ -61,10 +53,7 @@ def decrypt_seed_endpoint(payload: EncryptedSeed):
 def generate_2fa():
 
     if not os.path.exists(SEED_FILE):
-        raise HTTPException(
-            status_code=500,
-            detail={"error": "Seed not decrypted yet"}
-        )
+        raise HTTPException(status_code=500, detail={"error": "Seed not decrypted yet"})
 
     try:
         with open(SEED_FILE, "r") as f:
@@ -73,8 +62,8 @@ def generate_2fa():
         code, valid_for = generate_code_with_validity(hex_seed)
 
         return {
-            "code": code,
-            "valid_for": valid_for
+            "code": str(code),
+            "valid_for": int(valid_for)
         }
 
     except Exception:
@@ -83,25 +72,17 @@ def generate_2fa():
             detail={"error": "Failed to generate TOTP"}
         )
 
-
 # ===============================================================
 # 3️⃣ POST /verify-2fa
 # ===============================================================
 @app.post("/verify-2fa")
 def verify_2fa(payload: VerifyCode):
 
-    # Missing code → 400 error
     if payload.code is None:
-        raise HTTPException(
-            status_code=400,
-            detail={"error": "Missing code"}
-        )
+        raise HTTPException(status_code=400, detail={"error": "Missing code"})
 
     if not os.path.exists(SEED_FILE):
-        raise HTTPException(
-            status_code=500,
-            detail={"error": "Seed not decrypted yet"}
-        )
+        raise HTTPException(status_code=500, detail={"error": "Seed not decrypted yet"})
 
     try:
         with open(SEED_FILE, "r") as f:
@@ -109,7 +90,7 @@ def verify_2fa(payload: VerifyCode):
 
         is_valid = verify_totp_code(hex_seed, payload.code)
 
-        return {"valid": is_valid}
+        return {"valid": bool(is_valid)}
 
     except Exception:
         raise HTTPException(

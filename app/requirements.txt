@@ -1,4 +1,5 @@
 fastapi
 uvicorn
-pyotp
 cryptography
+pyotp
+python-multipart

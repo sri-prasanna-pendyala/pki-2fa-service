@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   app:
     build:
@@ -14,19 +12,8 @@ services:
       TZ: "UTC"
 
     volumes:
-      # persistent seed storage
       - seed-data:/data
-
-      # cron job output
       - cron-output:/cron_output
-
-      # mount key files as read-only
-      - ./keys/student_private.pem:/app/keys/student_private.pem:ro
-      - ./keys/student_public.pem:/app/keys/student_public.pem:ro
-      - ./keys/instructor_public.pem:/app/keys/instructor_public.pem:ro
-
-      # mount cron job
-      - ./cron/2fa-cron:/cron/2fa-cron:ro
 
     restart: unless-stopped
 

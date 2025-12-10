@@ -1,1 +1,1 @@
-* * * * * cd /app && python3 app/cron_job.py >> /cron_output/last_code.txt 2>&1
+* * * * * curl -s http://localhost:8080/generate-2fa >> /cron_output/last_code.txt
